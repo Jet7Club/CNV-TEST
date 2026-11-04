@@ -1806,8 +1806,9 @@ let currentScenario=-1;
 const labels={};buttons.forEach(b=>labels[b.dataset.i18n]=b.textContent.trim());
 const keys=()=>groups.flatMap(g=>[...g.querySelectorAll('button.q.active')].map(b=>b.dataset.i18n));
 function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+let cnvDayRevision=0;
 function makeDay(selection,scenarioId){
- const k=[...new Set(selection)].sort(),seed=hash(k.join('|')+'|'+(scenarioId>=0?scenarioId:'live'));
+ const k=[...new Set(selection)].sort(),seed=hash(k.join('|')+'|'+(scenarioId>=0?scenarioId:'live')+'|'+cnvDayRevision);
  const family=k.includes('i78'),couple=k.includes('i77'),friends=k.includes('i79'),work=k.includes('i82')||k.includes('i83');
  const sport=k.includes('i86')||k.includes('i88'),culture=k.includes('i87')||k.includes('i89');
  const wellness=k.includes('i91')||k.includes('i95'),social=k.includes('i92')||k.includes('i97');
@@ -1865,6 +1866,7 @@ buttons.forEach(b=>b.addEventListener('click',(event)=>{
  b.classList.toggle('active',multi?!wasActive:true);
  buttons.forEach(x=>x.setAttribute('aria-pressed',String(x.classList.contains('active'))));
  currentScenario=-1;selector.value='';
+ cnvDayRevision++;
  document.getElementById('cnvScenarioClicks').textContent='';
  render();
 },true));
