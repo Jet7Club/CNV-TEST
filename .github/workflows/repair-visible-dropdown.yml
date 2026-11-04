@@ -1,0 +1,88 @@
+name: Repair visible CNV TEST dropdown
+on:
+  push:
+    paths: ['.github/workflows/repair-visible-dropdown.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make eight-link menu reliably visible and interactive
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert 'id="cnvMenuToggle"' in s and 'id="cnvMainMenu"' in s
+          assert 'cnv-test-premium-menu-behavior' in s
+          css="""
+          <style id="cnv-test-dropdown-repair">
+          /* Fixed dropdown avoids clipping by the hero and inherited legacy navigation rules. */
+          #cnvMainMenu.cnvMenuOpen,#cnvMainMenu.cnvMenuOpen.cnvVisible{
+            display:flex!important;visibility:visible!important;opacity:1!important;
+            pointer-events:auto!important;position:fixed!important;
+            top:var(--cnv-menu-top,96px)!important;right:var(--cnv-menu-right,24px)!important;
+            left:auto!important;bottom:auto!important;width:min(360px,calc(100vw - 28px))!important;
+            max-height:calc(100dvh - 115px)!important;overflow-y:auto!important;
+            flex-direction:column!important;align-items:stretch!important;gap:0!important;
+            padding:14px!important;background:#092b23!important;
+            border:1px solid rgba(233,204,147,.45)!important;border-radius:18px!important;
+            box-shadow:0 24px 75px rgba(0,0,0,.45)!important;z-index:2147483646!important;
+            transform:none!important;clip-path:none!important;
+          }
+          #cnvMainMenu.cnvMenuOpen a{display:block!important;visibility:visible!important;opacity:1!important;
+            color:#fff!important;font-size:16px!important;font-weight:650!important;
+            padding:13px 18px!important;line-height:1.3!important;text-decoration:none!important}
+          #cnvMenuToggle{z-index:2147483647!important;pointer-events:auto!important}
+          @media(max-width:760px){#cnvMainMenu.cnvMenuOpen{right:14px!important}}
+          </style>
+          """
+          js="""
+          <script id="cnv-test-dropdown-repair-js">
+          (function(){
+            function install(){
+              const b=document.getElementById('cnvMenuToggle');
+              const m=document.getElementById('cnvMainMenu');
+              if(!b||!m)return;
+              // Put the menu outside the hero, which has overflow:hidden and clips dropdowns.
+              document.body.appendChild(m);
+              const setOpen=function(open){
+                if(open){
+                  const r=b.getBoundingClientRect();
+                  m.style.setProperty('--cnv-menu-top',Math.min(window.innerHeight-120,r.bottom+10)+'px');
+                  m.style.setProperty('--cnv-menu-right',Math.max(12,window.innerWidth-r.right)+'px');
+                }
+                m.classList.toggle('cnvMenuOpen',open);
+                m.classList.toggle('cnvVisible',open);
+                b.setAttribute('aria-expanded',String(open));
+              };
+              // Capture prevents conflicting old handlers from immediately closing it.
+              b.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();setOpen(b.getAttribute('aria-expanded')!=='true')},true);
+              m.addEventListener('click',function(e){if(e.target.closest('a'))setOpen(false)});
+              document.addEventListener('click',function(e){if(!b.contains(e.target)&&!m.contains(e.target))setOpen(false)});
+              document.addEventListener('keydown',function(e){if(e.key==='Escape')setOpen(false)});
+              window.addEventListener('resize',function(){if(b.getAttribute('aria-expanded')==='true')setOpen(true)});
+              // Menu retains all eight data-i18n links and receives live language changes.
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+          })();
+          </script>
+          """
+          assert s.count('</head>')==1 and s.count('</body>')==1
+          s=s.replace('</head>',css+'\n</head>',1)
+          s=s.replace('</body>',js+'\n</body>',1)
+          assert s.count('id="cnvMainMenu"')==1
+          assert all(('data-i18n="i'+str(i)+'"') in s for i in range(8))
+          Path('index.html').write_text(s,encoding='utf-8')
+          print('VERIFIED: eight links present, fixed dropdown outside clipped hero, capture click enabled')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix CNV TEST hamburger dropdown clipped by hero overflow"
+          git pull --rebase origin main
+          git push
