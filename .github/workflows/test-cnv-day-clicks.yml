@@ -18,9 +18,9 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage();
             page.on('pageerror',e=>console.log('PAGE ERROR',e.message));
-            await page.goto('https://jet7club.github.io/CNV-TEST/?v=check',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.goto('file://'+process.cwd()+'/index.html',{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForTimeout(1000);
-            console.log('COUNTS',await page.evaluate(()=>({engine:!!window.CNV_DAY_ENGINE,buttons:document.querySelectorAll('#cnvDayStudio button.q').length,slots:document.querySelectorAll('#cnvIdealDayTimeline .slotTitle').length})));
+            console.log('URL',page.url(),'TITLE',await page.title()); console.log('COUNTS',await page.evaluate(()=>({engine:!!window.CNV_DAY_ENGINE,buttons:document.querySelectorAll('#cnvDayStudio button.q').length,slots:document.querySelectorAll('#cnvIdealDayTimeline .slotTitle').length})));
             const btn=page.locator('#cnvDayStudio button.q');
             console.log('LABELS',(await btn.allTextContents()).slice(0,20));
             const before=await page.locator('#cnvIdealDayTimeline .slotTitle').allTextContents();
