@@ -1,0 +1,92 @@
+name: Apply premium hamburger navigation CNV TEST
+on:
+  push:
+    paths: ['.github/workflows/apply-premium-menu.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update header, remove layered hero imagery, validate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          assert s.count('<header>')==1 and s.count('</header>')==1
+          assert '<nav><a data-i18n="i0"' in s
+          # Existing navigation remains the translation-aware source of links.
+          s=s.replace('<nav><a data-i18n="i0"', '<button type="button" class="cnvMenuToggle" id="cnvMenuToggle" aria-label="Open navigation menu" aria-controls="cnvMainMenu" aria-expanded="false"><span></span><span></span><span></span></button><nav id="cnvMainMenu" aria-label="Main navigation"><a data-i18n="i0"',1)
+          # Hide decorative collage and remove it from the DOM when loaded.
+          css=r"""
+          <style id="cnv-test-premium-menu-20261104">
+          header .nav{border-bottom:0!important;grid-template-columns:minmax(170px,1fr) auto auto!important;gap:clamp(10px,2vw,28px)!important;align-items:center!important;position:relative!important}
+          header .nav>.logoBox{grid-column:1!important;grid-row:1!important}
+          header .nav>.tools{grid-column:2!important;grid-row:1!important;justify-self:end!important}
+          #cnvMenuToggle{grid-column:3!important;grid-row:1!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;gap:6px!important;width:52px!important;height:52px!important;padding:12px!important;border:1px solid rgba(255,255,255,.5)!important;border-radius:14px!important;background:rgba(6,29,22,.65)!important;backdrop-filter:blur(14px);cursor:pointer!important;color:#fff!important;position:relative!important;z-index:1002!important}
+          #cnvMenuToggle span{display:block!important;width:24px!important;height:2px!important;flex:none!important;border-radius:2px!important;background:#fff!important;transition:transform .2s ease,opacity .2s ease}
+          #cnvMenuToggle[aria-expanded="true"] span:nth-child(1){transform:translateY(8px) rotate(45deg)}
+          #cnvMenuToggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+          #cnvMenuToggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
+          header .nav>#cnvMainMenu{display:none!important;position:absolute!important;top:calc(100% - 5px)!important;right:0!important;left:auto!important;width:min(360px,calc(100vw - 32px))!important;max-height:calc(100vh - 130px)!important;overflow-y:auto!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:0!important;flex-wrap:nowrap!important;padding:12px!important;background:rgba(7,34,27,.98)!important;border:1px solid rgba(221,199,151,.3)!important;border-radius:18px!important;box-shadow:0 24px 65px rgba(0,0,0,.32)!important;z-index:1001!important;backdrop-filter:blur(20px)}
+          header .nav>#cnvMainMenu.cnvMenuOpen{display:flex!important}
+          #cnvMainMenu a{display:block!important;padding:12px 16px!important;border-radius:10px!important;font-size:15px!important;line-height:1.35!important;font-weight:600!important;white-space:normal!important;color:#f8f5e9!important;opacity:1!important;text-align:left!important}
+          #cnvMainMenu a:hover,#cnvMainMenu a:focus-visible{background:rgba(216,177,91,.16)!important;color:#f1d38c!important}
+          .hero .digitalField,.hero .digitalField *,.hero .techVisualSmall,.hero .techThumb,.hero .floatingVisual{display:none!important}
+          .hero .grid,.hero .node{display:none!important}
+          .hero::after{display:none!important}
+          @media(max-width:760px){
+            header .nav{width:calc(100% - 28px)!important;min-height:88px!important;height:auto!important;padding:10px 0!important;grid-template-columns:minmax(100px,1fr) auto auto!important;gap:8px!important}
+            header .nav>.logoBox{width:min(160px,100%)!important;height:66px!important;min-height:66px!important}
+            header .nav>.logoBox img{max-width:100%!important;width:100%!important;height:100%!important;object-fit:contain!important}
+            header .nav>.tools{height:auto!important;min-height:0!important;grid-column:2!important}
+            header .nav>.tools .join{display:none!important}
+            #cnvMenuToggle{width:46px!important;height:46px!important;padding:9px!important}
+            header .nav>#cnvMainMenu{top:100%!important}
+            .heroContent{padding-top:175px!important}
+          }
+          @media(prefers-reduced-motion:reduce){#cnvMenuToggle span{transition:none!important}}
+          </style>
+          """
+          js=r"""
+          <script id="cnv-test-premium-menu-behavior">
+          (function(){
+            function init(){
+              const button=document.getElementById('cnvMenuToggle');
+              const menu=document.getElementById('cnvMainMenu');
+              if(!button||!menu)return;
+              const close=()=>{menu.classList.remove('cnvMenuOpen');button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Open navigation menu')};
+              button.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')!=='true';menu.classList.toggle('cnvMenuOpen',open);button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Close navigation menu':'Open navigation menu')});
+              menu.addEventListener('click',e=>{if(e.target.closest('a'))close()});
+              document.addEventListener('click',e=>{if(!menu.contains(e.target)&&!button.contains(e.target))close()});
+              document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+              // Decorative hero collage is not part of the main CNV photograph.
+              document.querySelectorAll('.hero .digitalField,.hero .techVisualSmall,.hero .techThumb,.hero .floatingVisual').forEach(el=>el.remove());
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+          })();
+          </script>
+          """
+          assert '</head>' in s and '</body>' in s
+          s=s.replace('</head>',css+'\n</head>',1)
+          s=s.replace('</body>',js+'\n</body>',1)
+          assert s.count('id="cnvMenuToggle"')==1
+          assert s.count('id="cnvMainMenu"')==1
+          assert s.count('cnv-test-premium-menu-20261104')==1
+          assert s.count('cnv-test-premium-menu-behavior')==1
+          assert s.count('data-i18n="i0"')>=1 and s.count('data-i18n="i7"')>=1
+          p.write_text(s,encoding='utf-8')
+          print('SUCCESS: menu inserted, nav translations preserved, top border and decorative collage removed')
+          PY
+      - name: Commit and push only CNV TEST
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "CNV TEST: premium hamburger menu and clean hero image"
+          git pull --rebase origin main
+          git push
