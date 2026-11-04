@@ -1,0 +1,20 @@
+name: Inspect day seed and click flow
+on:
+  push:
+    paths: ['.github/workflows/inspect-day-seed.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          a=s.index('function makeDay(')
+          print(s[a:a+2400])
+          i=s.index("buttons.forEach(b=>b.addEventListener('click'",a)
+          print('CLICK',s[i:i+950])
+          PY
