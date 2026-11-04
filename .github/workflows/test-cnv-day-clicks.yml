@@ -18,7 +18,7 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage();
             page.on('pageerror',e=>console.log('PAGE ERROR',e.message));
-            await page.goto('file://'+process.cwd()+'/index.html',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.goto('https://jet7club.github.io/CNV-TEST/?v=live-verify-20261104',{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForTimeout(1000);
             console.log('URL',page.url(),'TITLE',await page.title()); console.log('COUNTS',await page.evaluate(()=>({engine:!!window.CNV_DAY_ENGINE,buttons:document.querySelectorAll('#cnvDayStudio button.q').length,slots:document.querySelectorAll('#cnvIdealDayTimeline .slotTitle').length})));
             const btn=page.locator('#cnvDayStudio button.q');
@@ -31,6 +31,18 @@ jobs:
             if(before.every((x,i)=>x===after[i]))throw new Error('Click did not change the 16 moments');
             console.log('ACTIVE',await page.locator('#cnvDayStudio button.q.active').allTextContents());
             console.log('LONG',after.filter(x=>x.trim().split(/\s+/).length>9));
+            const initial=after;
+            for(let i=0;i<await btn.count();i++){
+              const prior=await page.locator('#cnvIdealDayTimeline .slotTitle').allTextContents();
+              const label=(await btn.nth(i).innerText()).trim();
+              await btn.nth(i).click({force:true});
+              await page.waitForTimeout(100);
+              const next=await page.locator('#cnvIdealDayTimeline .slotTitle').allTextContents();
+              const diff=prior.filter((x,j)=>x!==next[j]).length;
+              console.log('CLICK',i,JSON.stringify(label),'DIFF',diff,'ACTIVE',await btn.nth(i).getAttribute('class'));
+              if(next.length!==16)throw new Error('Missing slots after '+label);
+              if(next.some(x=>x.includes('…')||x.trim().split(/\s+/).length>9))throw new Error('Description constraint after '+label);
+            }
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
