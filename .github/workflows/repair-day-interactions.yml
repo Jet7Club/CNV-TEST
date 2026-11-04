@@ -1,4 +1,4 @@
-          name: Repair CNV day interactions and concise text
+name: Repair CNV day interactions and concise text
 on:
   push:
     paths: ['.github/workflows/repair-day-interactions.yml']
