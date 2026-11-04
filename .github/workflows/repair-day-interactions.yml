@@ -33,38 +33,38 @@ jobs:
           engine=engine[:choice_start]+"""const choice=(i,arr)=>{result[i]=arr[hash(seed+'|choice|'+i)%arr.length]}"""+engine[choice_end:]
           # Every generated description is rewritten as a complete, short clause.
           engine=engine.replace(' return result;',''' return result.map((description,i)=>{
-   let words=String(description).trim().replace(/\\s+/g,' ').split(' ');
-   if(words.length<=9)return words.join(' ');
-   // Remove optional context clauses rather than showing truncated text or an ellipsis.
-   const connectors=[' dans ',' avec ',' au cœur ',' sur une ',' en petit ',' pour un ',' dans la ',' à travers ',' en harmonie ',' sous les '];
-   let concise=String(description).trim();
-   for(const connector of connectors){
-     const pos=concise.toLowerCase().indexOf(connector);
-     if(pos>0&&concise.slice(0,pos).trim().split(/\\s+/).length>=3){concise=concise.slice(0,pos).trim();break}
-   }
-   words=concise.split(/\\s+/);
-   if(words.length>9){
-     const remove=['personnalisé','personnalisée','naturelle','naturel','conviviale','convivial','nouveau','nouvelle','douce','profond','profonde','inspirante','inspirants','partagé','partagée'];
-     words=words.filter((w,j)=>j<3||!remove.includes(w.toLowerCase()));
-   }
-   if(words.length>9)words=words.slice(0,9);
-   return words.join(' ').replace(/[,:;–-]$/,'').trim();
- });''',1)
+             let words=String(description).trim().replace(/\\s+/g,' ').split(' ');
+             if(words.length<=9)return words.join(' ');
+             // Remove optional context clauses rather than showing truncated text or an ellipsis.
+             const connectors=[' dans ',' avec ',' au cœur ',' sur une ',' en petit ',' pour un ',' dans la ',' à travers ',' en harmonie ',' sous les '];
+             let concise=String(description).trim();
+             for(const connector of connectors){
+               const pos=concise.toLowerCase().indexOf(connector);
+               if(pos>0&&concise.slice(0,pos).trim().split(/\\s+/).length>=3){concise=concise.slice(0,pos).trim();break}
+             }
+             words=concise.split(/\\s+/);
+             if(words.length>9){
+               const remove=['personnalisé','personnalisée','naturelle','naturel','conviviale','convivial','nouveau','nouvelle','douce','profond','profonde','inspirante','inspirants','partagé','partagée'];
+               words=words.filter((w,j)=>j<3||!remove.includes(w.toLowerCase()));
+             }
+             if(words.length>9)words=words.slice(0,9);
+             return words.join(' ').replace(/[,:;–-]$/,'').trim();
+           });''',1)
           s=s[:start]+engine+s[end:]
           # One click handler: prevent legacy listeners from undoing selection.
           a=s.index('buttons.forEach(b=>b.addEventListener(\'click\'',start)
           b=s.index('\nnew MutationObserver',a)
           s=s[:a]+"""buttons.forEach(b=>b.addEventListener('click',(event)=>{
- event.preventDefault();event.stopImmediatePropagation();
- const g=b.closest('.qbGroup');
- const multi=g.querySelector('.qbChoices').classList.contains('multi');
- const wasActive=b.classList.contains('active');
- if(!multi)g.querySelectorAll('button.q').forEach(x=>x.classList.remove('active'));
- b.classList.toggle('active',multi?!wasActive:true);
- buttons.forEach(x=>x.setAttribute('aria-pressed',String(x.classList.contains('active'))));
- currentScenario=-1;selector.value='';
- document.getElementById('cnvScenarioClicks').textContent='';
- render();
+           event.preventDefault();event.stopImmediatePropagation();
+           const g=b.closest('.qbGroup');
+           const multi=g.querySelector('.qbChoices').classList.contains('multi');
+           const wasActive=b.classList.contains('active');
+           if(!multi)g.querySelectorAll('button.q').forEach(x=>x.classList.remove('active'));
+           b.classList.toggle('active',multi?!wasActive:true);
+           buttons.forEach(x=>x.setAttribute('aria-pressed',String(x.classList.contains('active'))));
+           currentScenario=-1;selector.value='';
+           document.getElementById('cnvScenarioClicks').textContent='';
+           render();
           },true));"""+s[b:]
           assert 'Votre journée idéale en 16 moments' in s
           assert 'cnv-test-nine-words-per-moment' not in s
