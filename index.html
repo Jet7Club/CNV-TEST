@@ -1418,6 +1418,25 @@ header .nav>#cnvMainMenu.cnvMenuOpen{display:flex!important}
 }
 </style>
 
+
+<style id="cnv-test-clean-art-and-thumbnails">
+/* Two clean, independent panels, without the redundant introductory white card. */
+#artdevivre #cnvDayStudio{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:24px!important;align-items:start!important}
+#artdevivre #cnvDayStudio>.cnvDaySide{display:none!important}
+#artdevivre #cnvDayStudio>.quickBuilder{grid-column:1!important;grid-row:1!important}
+#artdevivre #cnvDayStudio>.cnvDayRight{grid-column:2!important;grid-row:1!important}
+@media(max-width:800px){
+  #artdevivre #cnvDayStudio{grid-template-columns:minmax(0,1fr)!important}
+  #artdevivre #cnvDayStudio>.quickBuilder{grid-column:1!important;grid-row:1!important}
+  #artdevivre #cnvDayStudio>.cnvDayRight{grid-column:1!important;grid-row:2!important}
+}
+/* Remove small stacked decorative photographs, retain large main images. */
+.hero .techVisualSmall,.hero .techThumb,.hero .floatingVisual,.hero .digitalField,
+.hero .thumb,.hero .thumbnail,.hero .photoStack,.hero .photoOverlay,
+.hero .miniPhoto,.hero .miniImage,.hero .collage,.hero .imageCollage,
+.hero .floatingImage,.hero .floatingPhoto{display:none!important}
+</style>
+
 </head>
 <body>
 <section class="hero">
@@ -1855,6 +1874,36 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
     document.getElementById('langSelect')?.addEventListener('change',function(){requestAnimationFrame(limit)});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+
+<script id="cnv-test-clean-art-and-thumbnails-js">
+(function(){
+  function clean(){
+    const art=document.getElementById('artdevivre');
+    if(art){
+      const side=art.querySelector('#cnvDayStudio>.cnvDaySide');
+      if(side)side.remove();
+      // Replace the Micro-villages line with the requested heading.
+      const walk=document.createTreeWalker(art,NodeFilter.SHOW_TEXT);
+      let n;while((n=walk.nextNode())){
+        if(n.nodeValue.trim()==='Micro-villages'){
+          const parent=n.parentElement;
+          if(parent&&!parent.closest('#cnvDayStudio')){
+            parent.textContent='VOTRE PARCOURS PERSONNALISÉ';
+            const h=document.createElement('h3');
+            h.textContent='Composez votre journée';
+            h.style.cssText='font-size:clamp(23px,3vw,34px);font-weight:650;margin:8px 0 24px;color:#143e32';
+            parent.insertAdjacentElement('afterend',h);
+          }
+          break;
+        }
+      }
+    }
+    document.querySelectorAll('.hero .techVisualSmall,.hero .techThumb,.hero .floatingVisual,.hero .digitalField,.hero .thumb,.hero .thumbnail,.hero .photoStack,.hero .photoOverlay,.hero .miniPhoto,.hero .miniImage,.hero .collage,.hero .imageCollage,.hero .floatingImage,.hero .floatingPhoto').forEach(el=>el.remove());
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',clean);else clean();
 })();
 </script>
 
