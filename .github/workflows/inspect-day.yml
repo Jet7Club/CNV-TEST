@@ -1,0 +1,19 @@
+name: Inspect day layout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['cnvDayStudio','cnvDaySlot','cnvDayTimeline','quickBuilder']:
+              print(term,s.count(term))
+              i=s.find(term)
+              print(repr(s[max(0,i-150):i+450]))
+          PY
