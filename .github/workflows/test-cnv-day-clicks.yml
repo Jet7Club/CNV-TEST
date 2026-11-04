@@ -28,6 +28,7 @@ jobs:
             await page.waitForTimeout(300);
             const after=await page.locator('#cnvIdealDayTimeline .slotTitle').allTextContents();
             console.log('DIFF',before.map((x,i)=>x!==after[i]?i:null).filter(x=>x!==null));
+            if(before.every((x,i)=>x===after[i]))throw new Error('Click did not change the 16 moments');
             console.log('ACTIVE',await page.locator('#cnvDayStudio button.q.active').allTextContents());
             console.log('LONG',after.filter(x=>x.trim().split(/\s+/).length>9));
             await browser.close();
