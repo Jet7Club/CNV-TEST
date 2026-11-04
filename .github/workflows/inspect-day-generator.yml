@@ -1,0 +1,21 @@
+name: Inspect day generator
+on:
+  push:
+    paths: ['.github/workflows/inspect-day-generator.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          for term in ['function makeDay','function renderDay','function updateDay','cnv-test-nine-words-per-moment','cnvDayRightHeading','cnvIdealDayTimeline','Votre journée idéale · 16 moments']:
+              print('TERM',term,s.count(term))
+              for m in list(re.finditer(re.escape(term),s))[-2:]:
+                  print('SNIP',repr(s[max(0,m.start()-350):m.start()+2600]))
+          PY
