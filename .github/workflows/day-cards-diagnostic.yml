@@ -1,0 +1,21 @@
+name: Day cards diagnostic
+on:
+  push:
+    paths: ['.github/workflows/day-cards-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['cnvDayStudio','cnvDaySlot','cnvDayTimeline','quickBuilder','cnvDaySide','cnvDayRight','dayUpdated']:
+              print('TERM',term,'COUNT',s.count(term))
+              for i in [s.find(term),s.rfind(term)]:
+                  if i>=0:print('SNIP',repr(s[max(0,i-180):i+650]))
+          PY
