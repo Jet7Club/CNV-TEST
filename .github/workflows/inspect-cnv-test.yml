@@ -1,0 +1,24 @@
+name: Inspect CNV TEST navigation
+on:
+  push:
+    paths: ['.github/workflows/inspect-cnv-test.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          print('LENGTH',len(s))
+          for term in ['<header','</header>','<nav','</nav>','<main','hero','thumb','gallery','collage','overlay','strip','<aside']:
+              ms=list(re.finditer(re.escape(term),s,re.I))
+              print('TERM',term,'COUNT',len(ms))
+              for m in ms[:3]:print('SNIP',repr(s[max(0,m.start()-180):m.start()+650]))
+          print('FIRST',repr(s[:10500]))
+          PY
