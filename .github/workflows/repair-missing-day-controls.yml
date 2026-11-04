@@ -1,0 +1,59 @@
+name: Repair removed day engine controls
+on:
+  push:
+    paths: ['.github/workflows/repair-missing-day-controls.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          # Previously deleted left panel held hidden engine controls.
+          # Restore their functional DOM nodes outside the removed visual panel.
+          patch="""
+          <script id="cnv-test-restore-day-controls">
+          (function(){
+            function init(){
+              const studio=document.getElementById('cnvDayStudio');
+              if(!studio)return;
+              const holder=document.createElement('div');
+              holder.id='cnvDayEngineControls';
+              holder.hidden=true;
+              holder.style.display='none';
+              const ids=['cnvScenarioClicks','cnvScenarioSelect','cnvScenarioFilter','cnvPrevScenario','cnvNextScenario','cnvSurpriseDay','cnvResetDay','cnvLiveChips','idealDayStatus'];
+              ids.forEach(id=>{
+                if(document.getElementById(id))return;
+                const tag=id==='cnvScenarioSelect'||id==='cnvScenarioFilter'?'select':id==='cnvLiveChips'||id==='cnvScenarioClicks'||id==='idealDayStatus'?'div':'button';
+                const node=document.createElement(tag);node.id=id;
+                if(id==='cnvScenarioFilter'){const opt=document.createElement('option');opt.value='all';opt.textContent='All';node.appendChild(opt);node.value='all'}
+                holder.appendChild(node);
+              });
+              studio.appendChild(holder);
+            }
+            // Install before the existing day engine initializes.
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{capture:true});else init();
+          })();
+          </script>
+          """
+          # Day engine is an inline IIFE and may run before DOMContentLoaded; place restoration directly before its script.
+          pos=s.index('function makeDay(')
+          script_start=s.rfind('<script',0,pos)
+          assert script_start>0
+          # Synchronous restoration: the day studio exists by the time the engine script runs.
+          patch=patch.replace("if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{capture:true});else init();","init();")
+          s=s[:script_start]+patch+'\n'+s[script_start:]
+          p.write_text(s)
+          print('Restored missing controls before generator initialization')
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Restore day engine DOM controls removed with sidebar"
+          git pull --rebase origin main
+          git push
