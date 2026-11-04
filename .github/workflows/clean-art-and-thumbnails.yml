@@ -1,0 +1,80 @@
+name: Clean Art de vivre and layered thumbnails
+on:
+  push:
+    paths: ['.github/workflows/clean-art-and-thumbnails.yml']
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert 'id="cnvDayStudio"' in s
+          assert 'cnvDaySide' in s
+          css="""
+          <style id="cnv-test-clean-art-and-thumbnails">
+          /* Two clean, independent panels, without the redundant introductory white card. */
+          #artdevivre #cnvDayStudio{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:24px!important;align-items:start!important}
+          #artdevivre #cnvDayStudio>.cnvDaySide{display:none!important}
+          #artdevivre #cnvDayStudio>.quickBuilder{grid-column:1!important;grid-row:1!important}
+          #artdevivre #cnvDayStudio>.cnvDayRight{grid-column:2!important;grid-row:1!important}
+          @media(max-width:800px){
+            #artdevivre #cnvDayStudio{grid-template-columns:minmax(0,1fr)!important}
+            #artdevivre #cnvDayStudio>.quickBuilder{grid-column:1!important;grid-row:1!important}
+            #artdevivre #cnvDayStudio>.cnvDayRight{grid-column:1!important;grid-row:2!important}
+          }
+          /* Remove small stacked decorative photographs, retain large main images. */
+          .hero .techVisualSmall,.hero .techThumb,.hero .floatingVisual,.hero .digitalField,
+          .hero .thumb,.hero .thumbnail,.hero .photoStack,.hero .photoOverlay,
+          .hero .miniPhoto,.hero .miniImage,.hero .collage,.hero .imageCollage,
+          .hero .floatingImage,.hero .floatingPhoto{display:none!important}
+          </style>
+          """
+          js="""
+          <script id="cnv-test-clean-art-and-thumbnails-js">
+          (function(){
+            function clean(){
+              const art=document.getElementById('artdevivre');
+              if(art){
+                const side=art.querySelector('#cnvDayStudio>.cnvDaySide');
+                if(side)side.remove();
+                // Replace the Micro-villages line with the requested heading.
+                const walk=document.createTreeWalker(art,NodeFilter.SHOW_TEXT);
+                let n;while((n=walk.nextNode())){
+                  if(n.nodeValue.trim()==='Micro-villages'){
+                    const parent=n.parentElement;
+                    if(parent&&!parent.closest('#cnvDayStudio')){
+                      parent.textContent='VOTRE PARCOURS PERSONNALISÉ';
+                      const h=document.createElement('h3');
+                      h.textContent='Composez votre journée';
+                      h.style.cssText='font-size:clamp(23px,3vw,34px);font-weight:650;margin:8px 0 24px;color:#143e32';
+                      parent.insertAdjacentElement('afterend',h);
+                    }
+                    break;
+                  }
+                }
+              }
+              document.querySelectorAll('.hero .techVisualSmall,.hero .techThumb,.hero .floatingVisual,.hero .digitalField,.hero .thumb,.hero .thumbnail,.hero .photoStack,.hero .photoOverlay,.hero .miniPhoto,.hero .miniImage,.hero .collage,.hero .imageCollage,.hero .floatingImage,.hero .floatingPhoto').forEach(el=>el.remove());
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',clean);else clean();
+          })();
+          </script>
+          """
+          assert '</head>' in s and '</body>' in s
+          s=s.replace('</head>',css+'\n</head>',1).replace('</body>',js+'\n</body>',1)
+          Path('index.html').write_text(s,encoding='utf-8')
+          print('CHECK: redundant side panel removed, headings adjusted, hero thumbnail overlays hidden')
+          PY
+      - name: Save changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "CNV TEST: remove redundant Art de vivre column and stacked photos"
+          git pull --rebase origin main
+          git push
