@@ -1,4 +1,4 @@
-name: Repair CNV day interactions and concise text
+          name: Repair CNV day interactions and concise text
 on:
   push:
     paths: ['.github/workflows/repair-day-interactions.yml']
@@ -65,7 +65,7 @@ jobs:
  currentScenario=-1;selector.value='';
  document.getElementById('cnvScenarioClicks').textContent='';
  render();
-},true));"""+s[b:]
+          },true));"""+s[b:]
           assert 'Votre journée idéale en 16 moments' in s
           assert 'cnv-test-nine-words-per-moment' not in s
           assert 'event.stopImmediatePropagation()' in s
