@@ -1,5 +1,7 @@
 name: Inspect day layout
 on:
+  push:
+    paths: ['.github/workflows/inspect-day.yml']
   workflow_dispatch:
 permissions:
   contents: read
