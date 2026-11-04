@@ -12,7 +12,9 @@ jobs:
       - run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('index.html');s=p.read_text()\n          assert 'if(side)side.remove();' in s\n          s=s.replace('if(side)side.remove();',"if(side){side.style.display='none';side.setAttribute('aria-hidden','true');}",1)
+          p=Path('index.html');s=p.read_text() 
+          assert 'if(side)side.remove();' in s
+          s=s.replace('if(side)side.remove();',"if(side){side.style.display='none';side.setAttribute('aria-hidden','true');}",1)
           # Previously deleted left panel held hidden engine controls.
           # Restore their functional DOM nodes outside the removed visual panel.
           patch="""
