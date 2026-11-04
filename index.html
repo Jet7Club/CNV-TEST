@@ -1770,6 +1770,31 @@ new MutationObserver(function(){translateMembershipUI();render()}).observe(docum
 })();
 </script>
 
+
+<script id="cnv-test-restore-day-controls">
+(function(){
+  function init(){
+    const studio=document.getElementById('cnvDayStudio');
+    if(!studio)return;
+    const holder=document.createElement('div');
+    holder.id='cnvDayEngineControls';
+    holder.hidden=true;
+    holder.style.display='none';
+    const ids=['cnvScenarioClicks','cnvScenarioSelect','cnvScenarioFilter','cnvPrevScenario','cnvNextScenario','cnvSurpriseDay','cnvResetDay','cnvLiveChips','idealDayStatus'];
+    ids.forEach(id=>{
+      if(document.getElementById(id))return;
+      const tag=id==='cnvScenarioSelect'||id==='cnvScenarioFilter'?'select':id==='cnvLiveChips'||id==='cnvScenarioClicks'||id==='idealDayStatus'?'div':'button';
+      const node=document.createElement(tag);node.id=id;
+      if(id==='cnvScenarioFilter'){const opt=document.createElement('option');opt.value='all';opt.textContent='All';node.appendChild(opt);node.value='all'}
+      holder.appendChild(node);
+    });
+    studio.appendChild(holder);
+  }
+  // Install before the existing day engine initializes.
+  init();
+})();
+</script>
+
 <script>(function(){
 'use strict';
 const art=document.getElementById('artdevivre'),timeline=document.getElementById('cnvIdealDayTimeline');if(!art||!timeline)return;
@@ -1902,7 +1927,7 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
     const art=document.getElementById('artdevivre');
     if(art){
       const side=art.querySelector('#cnvDayStudio>.cnvDaySide');
-      if(side)side.remove();
+      if(side){side.style.display='none';side.setAttribute('aria-hidden','true');}
       // Replace the Micro-villages line with the requested heading.
       const walk=document.createTreeWalker(art,NodeFilter.SHOW_TEXT);
       let n;while((n=walk.nextNode())){
