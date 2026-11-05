@@ -1,0 +1,41 @@
+name: Connect uploaded CNV charter PDFs
+on:
+  push:
+    paths: ['.github/workflows/connect-uploaded-charters.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire language links to actual uploaded PDFs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          mapping={
+            'documents/CNV_Reglement_Interieur_FR.pdf':'CNV_Reglement_Interieur_Premium_FR_Sans_Signature.pdf',
+            'documents/CNV_Community_Charter_EN.pdf':'CNV_Community_Charter_Premium_EN_No_Signature.pdf',
+            'documents/CNV_Reglamento_Interno_ES.pdf':'CNV_Reglamento_Interno_Premium_ES_Sin_Firma.pdf'
+          }
+          for old,new in mapping.items():
+            assert Path(new).is_file(),new
+            assert Path(new).read_bytes()[:4]==b'%PDF',new
+            assert old in s,old
+            s=s.replace(old,new)
+            print('VERIFIED PDF',new,Path(new).stat().st_size)
+          assert 'id="cnvCharterPdfLink"' in s
+          assert 'target="_blank"' in s
+          p.write_text(s)
+          print('PASS: all three language links target existing valid PDF files')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Link FR EN ES charter button to uploaded PDFs"
+          git pull --rebase origin main
+          git push
