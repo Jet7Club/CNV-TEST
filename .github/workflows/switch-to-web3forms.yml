@@ -1,0 +1,76 @@
+name: Switch CNV TEST to Web3Forms
+on:
+  push:
+    paths: ['.github/workflows/switch-to-web3forms.yml']
+permissions:
+  contents: write
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace email transport
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          start=s.index('<script id="cnv-formsubmit-ajax">')
+          end=s.index('</script>',start)+len('</script>')
+          js="""<script id="cnv-web3forms">
+          (function(){
+            'use strict';
+            const ENDPOINT='https://api.web3forms.com/submit';
+            const ACCESS_KEY='65c8c351-b346-4f80-9807-b09f325a1a46';
+            function text(el){return (el?.textContent||'').replace(/\\s+/g,' ').trim()}
+            document.addEventListener('submit',async function(e){
+              const form=e.target;
+              if(form?.id!=='cnvJoinContactForm')return;
+              e.preventDefault();e.stopImmediatePropagation();
+              if(!form.reportValidity())return;
+              const button=form.querySelector('button[type="submit"]');
+              const status=document.getElementById('cnvJoinFormStatus')||form.querySelector('.formStatus');
+              const lang=(document.getElementById('langSelect')?.value||document.documentElement.lang||'en').slice(0,2).toLowerCase();
+              const fields=[...form.querySelectorAll('.field > input:not([type="checkbox"]),.field > textarea')];
+              const names=['First name','Last name','Email','Mobile / WhatsApp','Country','LinkedIn / Instagram','Message'];
+              const selected=document.getElementById('becomeSelect');
+              const choice=text(selected?.selectedOptions?.[0])||'Not specified';
+              const goals=[...document.querySelectorAll('.joinQuestionnaire .goalGrid input[type="checkbox"]:checked')].map(el=>{
+                const group=el.closest('.goalGroup');
+                const label=text(el.closest('label')?.querySelector('span'))||text(el.closest('label'));
+                const category=text(group?.querySelector('b'));
+                return (category?category+' — ':'')+label;
+              });
+              const payload={access_key:ACCESS_KEY,subject:'CNV — '+choice+' — '+(fields[0]?.value||'')+' '+(fields[1]?.value||''),from_name:'CNV TEST Website',Language:lang,'I want to become':choice,'What are you looking for at CNV?':goals.length?goals.join(' | '):'No selection'};
+              names.forEach((name,i)=>payload[name]=fields[i]?.value?.trim()||'');
+              payload.email=fields[2]?.value?.trim()||'';
+              payload.message=fields[6]?.value?.trim()||'CNV membership inquiry';
+              if(button)button.disabled=true;
+              if(status){status.style.display='block';status.textContent=lang==='fr'?'Envoi en cours…':lang==='es'?'Enviando…':'Sending…'}
+              try{
+                const response=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
+                const data=await response.json().catch(()=>({}));
+                if(!response.ok||data.success!==true)throw new Error(data.message||'HTTP '+response.status);
+                if(status)status.textContent=lang==='fr'?'Votre message a été transmis à CNV.':lang==='es'?'Su mensaje se ha enviado a CNV.':'Your message has been sent to CNV.';
+                form.reset();
+              }catch(error){
+                console.error('CNV Web3Forms error',error);
+                if(status)status.textContent=(lang==='fr'?'Envoi impossible : ':lang==='es'?'No se pudo enviar: ':'Unable to send: ')+(error?.message||'Network error');
+              }finally{if(button)button.disabled=false}
+            },true);
+          })();
+          </script>"""
+          s=s[:start]+js+s[end:]
+          assert s.count('id="cnv-web3forms"')==1
+          assert s.count('id="cnvJoinContactForm"')==1
+          p.write_text(s)
+          print('PASS Web3Forms configured and old handler removed')
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Connect CNV TEST form to Web3Forms'
+          git pull --rebase origin main
+          git push
