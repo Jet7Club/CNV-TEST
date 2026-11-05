@@ -1,0 +1,25 @@
+name: Inspect production CNV email implementation
+on:
+  push:
+    paths: ['.github/workflows/inspect-production-email.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import requests,re
+          from pathlib import Path
+          for label,url in [('production','https://www.cnvillages.com/'),('test','https://jet7club.github.io/CNV-TEST/')]:
+            try:
+              r=requests.get(url,timeout=20);s=r.text
+              print('SITE',label,'STATUS',r.status_code,'LEN',len(s),'URL',r.url)
+              for term in ['formsubmit','formspree','mailto:','onsubmit','submit','jet7club@proton.me','sendEmail','emailjs','web3forms','action=','fetch(']:
+                matches=list(re.finditer(re.escape(term),s,re.I))
+                print('TERM',term,'COUNT',len(matches))
+                for m in matches[:4]:print('SNIP',repr(s[max(0,m.start()-230):m.start()+420]))
+            except Exception as e:print('ERROR',repr(e))
+          PY
