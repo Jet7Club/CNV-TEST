@@ -1977,17 +1977,24 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
 
 <script id="cnv-charter-pdf-lang">
 (function(){
-  const paths={fr:'documents/CNV_Reglement_Interieur_FR.pdf',en:'documents/CNV_Community_Charter_EN.pdf',es:'documents/CNV_Reglamento_Interno_ES.pdf'};
+  const paths={
+    fr:'documents/CNV_Reglement_Interieur_FR.pdf',
+    en:'documents/CNV_Community_Charter_EN.pdf',
+    es:'documents/CNV_Reglamento_Interno_ES.pdf'
+  };
   function sync(){
-    const a=document.getElementById('cnvCharterPdfLink');if(!a)return;
-    const html=document.documentElement.lang?.slice(0,2).toLowerCase();
-    const current=window.currentLang||window.lang||html||'en';
-    a.href=paths[current]||paths[html]||paths.en;
+    const link=document.getElementById('cnvCharterPdfLink');
+    if(!link)return;
+    const lang=(document.getElementById('langSelect')?.value||document.documentElement.lang||'en').slice(0,2).toLowerCase();
+    link.href=paths[lang]||paths.en;
+    link.target='_blank';
+    link.rel='noopener noreferrer';
   }
-  document.addEventListener('DOMContentLoaded',()=>{
+  document.addEventListener('DOMContentLoaded',function(){
     sync();
+    document.getElementById('langSelect')?.addEventListener('change',sync);
     new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-    document.addEventListener('click',e=>{if(e.target.closest('[data-lang],.langBtn,.language-btn'))setTimeout(sync,0)},true);
+    document.getElementById('cnvCharterPdfLink')?.addEventListener('click',sync);
   });
 })();
 </script>
