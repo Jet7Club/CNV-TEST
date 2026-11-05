@@ -1,0 +1,22 @@
+name: Locate investor price
+on:
+  push:
+    paths:
+      - .github/workflows/locate-investor-price.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['500 000','500,000','Investor','Participation']:
+            print('TERM',term,'COUNT',s.count(term))
+            i=0
+            for n in range(min(s.count(term),12)):
+              i=s.find(term,i)
+              print('CONTEXT',repr(s[max(0,i-140):i+190]))
+              i+=len(term)
+          PY
