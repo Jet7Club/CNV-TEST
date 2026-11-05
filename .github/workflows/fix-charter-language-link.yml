@@ -1,0 +1,52 @@
+name: Fix CNV charter language link
+on:
+  push:
+    paths: ['.github/workflows/fix-charter-language-link.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          start=s.index('<script id="cnv-charter-pdf-lang">')
+          end=s.index('</script>',start)+len('</script>')
+          new="""<script id="cnv-charter-pdf-lang">
+          (function(){
+            const paths={
+              fr:'documents/CNV_Reglement_Interieur_FR.pdf',
+              en:'documents/CNV_Community_Charter_EN.pdf',
+              es:'documents/CNV_Reglamento_Interno_ES.pdf'
+            };
+            function sync(){
+              const link=document.getElementById('cnvCharterPdfLink');
+              if(!link)return;
+              const lang=(document.getElementById('langSelect')?.value||document.documentElement.lang||'en').slice(0,2).toLowerCase();
+              link.href=paths[lang]||paths.en;
+              link.target='_blank';
+              link.rel='noopener noreferrer';
+            }
+            document.addEventListener('DOMContentLoaded',function(){
+              sync();
+              document.getElementById('langSelect')?.addEventListener('change',sync);
+              new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+              document.getElementById('cnvCharterPdfLink')?.addEventListener('click',sync);
+            });
+          })();
+          </script>"""
+          s=s[:start]+new+s[end:]
+          assert s.count('id="cnvCharterPdfLink"')==1
+          p.write_text(s)
+          print('PASS: FR EN ES PDF link opens a new tab')
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Use language selector for CNV charter PDF new-tab link"
+          git pull --rebase origin main
+          git push
