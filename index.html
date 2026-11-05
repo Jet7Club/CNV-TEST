@@ -2000,10 +2000,11 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
 </script>
 
 
-<script id="cnv-formsubmit-ajax">
+<script id="cnv-web3forms">
 (function(){
   'use strict';
-  const ENDPOINT='https://formsubmit.co/ajax/jet7club@proton.me';
+  const ENDPOINT='https://api.web3forms.com/submit';
+  const ACCESS_KEY='65c8c351-b346-4f80-9807-b09f325a1a46';
   function text(el){return (el?.textContent||'').replace(/\s+/g,' ').trim()}
   document.addEventListener('submit',async function(e){
     const form=e.target;
@@ -2023,49 +2024,21 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
       const category=text(group?.querySelector('b'));
       return (category?category+' — ':'')+label;
     });
-    const payload={_subject:'CNV — '+choice+' — '+(fields[0]?.value||'')+' '+(fields[1]?.value||''),_template:'table',_captcha:'false',Language:lang,'I want to become':choice,'What are you looking for at CNV?':goals.length?goals.join(' | '):'No selection'};
+    const payload={access_key:ACCESS_KEY,subject:'CNV — '+choice+' — '+(fields[0]?.value||'')+' '+(fields[1]?.value||''),from_name:'CNV TEST Website',Language:lang,'I want to become':choice,'What are you looking for at CNV?':goals.length?goals.join(' | '):'No selection'};
     names.forEach((name,i)=>payload[name]=fields[i]?.value?.trim()||'');
+    payload.email=fields[2]?.value?.trim()||'';
+    payload.message=fields[6]?.value?.trim()||'CNV membership inquiry';
     if(button)button.disabled=true;
     if(status){status.style.display='block';status.textContent=lang==='fr'?'Envoi en cours…':lang==='es'?'Enviando…':'Sending…'}
     try{
       const response=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
       const data=await response.json().catch(()=>({}));
-      if(!response.ok||data.success===false||data.success==='false'||data.success===0||data.success==='0')throw new Error(data.message||'HTTP '+response.status);
+      if(!response.ok||data.success!==true)throw new Error(data.message||'HTTP '+response.status);
       if(status)status.textContent=lang==='fr'?'Votre message a été transmis à CNV.':lang==='es'?'Su mensaje se ha enviado a CNV.':'Your message has been sent to CNV.';
       form.reset();
     }catch(error){
-      console.error('CNV FormSubmit error',error);
-      if(status){
-        const detail=String(error?.message||'').slice(0,220);
-        status.textContent=(lang==='fr'?'L’envoi direct a échoué. Utilisez le bouton sécurisé ci-dessous.':lang==='es'?'El envío directo falló. Utilice el botón seguro de abajo.':'Direct sending failed. Use the secure button below.')+' ('+detail+')';
-        let fallback=document.getElementById('cnvMailFallback');
-        if(!fallback){
-          fallback=document.createElement('button');
-          fallback.type='button';
-          fallback.id='cnvMailFallback';
-          fallback.className='btn btnGold';
-          fallback.style.marginTop='12px';
-          fallback.textContent=lang==='fr'?'Envoyer via le formulaire sécurisé':lang==='es'?'Enviar mediante formulario seguro':'Send via secure form';
-          status.after(fallback);
-        }
-        fallback.onclick=()=>{
-          const native=document.createElement('form');
-          native.method='POST';
-          native.action='https://formsubmit.co/jet7club@proton.me';
-          native.target='_blank';
-          native.style.display='none';
-          const data={...payload,_next:'https://jet7club.github.io/CNV-TEST/#join'};
-          Object.entries(data).forEach(([key,value])=>{
-            const input=document.createElement('input');
-            input.type='hidden';input.name=key;input.value=String(value);
-            native.appendChild(input);
-          });
-          document.body.appendChild(native);
-          native.submit();
-          native.remove();
-          status.textContent=lang==='fr'?'Formulaire sécurisé ouvert : confirmez l’envoi dans le nouvel onglet.':lang==='es'?'Formulario seguro abierto: confirme el envío en la nueva pestaña.':'Secure form opened: confirm sending in the new tab.';
-        };
-      }
+      console.error('CNV Web3Forms error',error);
+      if(status)status.textContent=(lang==='fr'?'Envoi impossible : ':lang==='es'?'No se pudo enviar: ':'Unable to send: ')+(error?.message||'Network error');
     }finally{if(button)button.disabled=false}
   },true);
 })();
