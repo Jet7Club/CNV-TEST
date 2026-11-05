@@ -1,0 +1,20 @@
+name: Inspect CNV phrases and charter link
+on:
+  push:
+    paths: ['.github/workflows/inspect-charter-link.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          for term in ['Règlement intérieur','Reglement interieur','Community Charter','Reglamento interno','slotTitle','function makeDay(','return result.map','cnvIdealDayTimeline','text-overflow','line-clamp']:
+            hits=list(re.finditer(re.escape(term),s,re.I));print('TERM',term,'COUNT',len(hits))
+            for m in hits[:4]:print('CONTEXT',repr(s[max(0,m.start()-260):m.start()+420]))
+          PY
