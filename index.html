@@ -1571,13 +1571,13 @@ header .nav>#cnvMainMenu.cnvMenuOpen{display:flex!important}
 <div class="goalGroup"><b data-i18n="i181">Contribution &amp; development</b><label><input type="checkbox"/><span data-i18n="i234">Actively contribute to CNV</span></label><label><input type="checkbox"/><span data-i18n="i235">Become a CNV ambassador</span></label><label><input type="checkbox"/><span data-i18n="i236">Invest in CNV</span></label></div>
 </div></div>
 <div class="contactPanel"><div class="contactIntro"><div class="eyebrow" data-i18n="i200">Contact</div><h3 data-i18n="i201">Tell us how you would like to join.</h3><p data-i18n="i202">Choose your relationship with CNV and send us a few details.</p></div>
-<form class="joinForm" onsubmit="event.preventDefault();document.querySelector('.formStatus').style.display='block'">
+<form class="joinForm" id="cnvJoinContactForm">
 <div class="field"><label data-i18n="i203">First name</label><input required=""/></div><div class="field"><label data-i18n="i204">Last name</label><input required=""/></div>
 <div class="field"><label data-i18n="i205">Email</label><input required="" type="email"/></div><div class="field"><label data-i18n="i206">Mobile / WhatsApp</label><input type="tel"/></div>
 <div class="field"><label data-i18n="i207">Country</label><input/></div><div class="field"><label data-i18n="i208">LinkedIn / Instagram</label><input/></div>
 <div class="field full"><label data-i18n="i209">Your message</label><textarea placeholder="Tell us what brings you to CNV and how you would like to take part." required="" rows="5"></textarea></div>
 <div class="field full formBottom"><label class="consent"><input required="" type="checkbox"/><span data-i18n="i210">I agree to be contacted by CNV about my request.</span></label><button class="btn btnGold" data-i18n="i211" type="submit">Send my message →</button></div>
-<div class="formStatus" data-i18n="i212">Thank you. Your message is ready to be sent to the CNV team.</div>
+<div class="formStatus" id="cnvJoinFormStatus" role="status" aria-live="polite">Your email application will open with the complete request. Please press Send to deliver it to CNV.</div>
 </form></div></div></section>
 <footer><div class="wrap foot" data-i18n="i215"><div data-i18n="i215">Nature · Communauté · Avenir   ·   FR · EN · ES</div></div></footer>
 <script>
@@ -1988,6 +1988,53 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
     sync();
     new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
     document.addEventListener('click',e=>{if(e.target.closest('[data-lang],.langBtn,.language-btn'))setTimeout(sync,0)},true);
+  });
+})();
+</script>
+
+<script id="cnv-contact-mailto">
+(function(){
+  const recipient='jet7club@proton.me';
+  const form=document.getElementById('cnvJoinContactForm');
+  if(!form)return;
+  const status=document.getElementById('cnvJoinFormStatus');
+  const labels={fr:['Prénom','Nom','E-mail','Mobile / WhatsApp','Pays','LinkedIn / Instagram','Message'],en:['First name','Last name','Email','Mobile / WhatsApp','Country','LinkedIn / Instagram','Message'],es:['Nombre','Apellido','Correo electrónico','Móvil / WhatsApp','País','LinkedIn / Instagram','Mensaje']};
+  const lang=()=>document.getElementById('langSelect')?.value||document.documentElement.lang||'en';
+  const clean=s=>String(s||'').replace(/[\r\n]+/g,' ').trim();
+  form.addEventListener('submit',function(event){
+    event.preventDefault();
+    if(!form.reportValidity())return;
+    const language=lang().slice(0,2);
+    const fieldLabels=labels[language]||labels.en;
+    const fields=[...form.querySelectorAll('.field > input:not([type="checkbox"]),.field > textarea')];
+    const selected=document.getElementById('becomeSelect');
+    const goals=[...document.querySelectorAll('.joinQuestionnaire .goalGrid input[type="checkbox"]:checked')].map(el=>{
+      const group=el.closest('.goalGroup');
+      const category=clean(group?.querySelector('b')?.textContent);
+      const value=clean(el.closest('label')?.querySelector('span')?.textContent||el.closest('label')?.textContent);
+      return '- '+(category?category+' : ':'')+value;
+    });
+    const subject='CNV — '+clean(selected?.selectedOptions?.[0]?.textContent||'Join CNV')+' — '+clean(fields[0]?.value)+' '+clean(fields[1]?.value);
+    const body=[
+      'CHILL NATURAL VILLAGES — CONTACT',
+      'Language / Langue: '+language.toUpperCase(),
+      '',
+      'I want to become / Je souhaite devenir:',
+      clean(selected?.selectedOptions?.[0]?.textContent)||'—',
+      '',
+      'What are you looking for at CNV? / Vos objectifs:',
+      goals.length?goals.join('\n'):'—',
+      '',
+      'Contact:',
+      ...fieldLabels.slice(0,6).map((label,i)=>label+': '+(fields[i]?.value?.trim()||'—')),
+      '',
+      fieldLabels[6]+':',
+      fields[6]?.value?.trim()||'—'
+    ].join('\n');
+    const uri='mailto:'+recipient+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    status.style.display='block';
+    status.textContent=language==='fr'?'Votre messagerie va s’ouvrir avec toutes vos réponses. Cliquez sur Envoyer pour transmettre votre demande.':language==='es'?'Se abrirá su correo con todas las respuestas. Pulse Enviar para remitir la solicitud.':'Your email application will open with all your answers. Press Send to deliver your request.';
+    window.location.href=uri;
   });
 })();
 </script>
