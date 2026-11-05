@@ -1,0 +1,59 @@
+name: Apply CNV wording and complete moments
+on:
+  push:
+    paths: ['.github/workflows/apply-cnv-wording-v3.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html');s=p.read_text()
+          # Correct all translations of the live-map count.
+          s=s.replace('26 zones','8 zones').replace('26 zonas','8 zonas')
+          # The requested five-micro-villages heading replaces obsolete explanatory text.
+          s=s.replace('Quelques clics pour composer votre journée. Choisissez votre profil puis explorez cinq propositions pour chacun des onze moments, parmi plus de 100 expériences.','5 Micro-villages.')
+          s=s.replace('Five clicks to compose your day.','5 Micro-villages.')
+          # Remove the former mechanical nine-word truncation.
+          a=s.index('return result.map((description,i)=>{',s.index('function makeDay('))
+          b=s.index('});',a)+3
+          replacement="""return result.map((description,i)=>{
+            const original=String(description).trim().replace(/\\s+/g,' ');
+            if(original.split(/\\s+/).length<=9)return original;
+            const short=[
+              ['Réveil paisible dans la nature','Respiration douce au lever du soleil'],
+              ['Petit-déjeuner gourmand et local','Saveurs fraîches pour bien commencer'],
+              ['Yoga matinal en plein air','Étirements doux au jardin'],
+              ['Balade découverte parmi les oliviers','Exploration des sentiers andalous'],
+              ['Atelier créatif et nouvelles idées','Temps libre pour vos projets'],
+              ['Pause bien-être au spa','Relaxation au cœur du village'],
+              ['Déjeuner savoureux entre membres','Cuisine locale et rencontres conviviales'],
+              ['Activité sportive en pleine nature','Jeux collectifs et bonne humeur'],
+              ['Rencontres inspirantes au village','Échanges autour de passions communes'],
+              ['Création et projets au Pro Hub','Atelier collaboratif entre entrepreneurs'],
+              ['Découverte artistique et culturelle','Atelier d’expression créative'],
+              ['Pause détente à votre rythme','Moment de calme et ressourcement'],
+              ['Concert intimiste et belles découvertes','Cinéma partagé sous les étoiles'],
+              ['Dîner convivial et nouvelles rencontres','Saveurs du soir entre amis'],
+              ['Promenade paisible sous les étoiles','Échanges complices en soirée'],
+              ['Retour au calme et gratitude','Relaxation avant une nuit sereine']
+            ];
+            return short[i][hash(seed+'|short|'+i)%2];
+          });"""
+          s=s[:a]+replacement+s[b:]
+          assert 'words.slice(0,9)' not in s
+          p.write_text(s)
+          print('PASS: short complete moments, map 8 zones, 5 micro-villages')
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix complete day moments and CNV map/micro-village labels"
+          git pull --rebase origin main
+          git push
