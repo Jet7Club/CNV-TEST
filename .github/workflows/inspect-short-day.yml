@@ -1,0 +1,19 @@
+name: Inspect short day phrases
+on:
+  push:
+    paths: ['.github/workflows/inspect-short-day.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          a=s.index('function makeDay(')
+          b=s.index('function render()',a)
+          print(s[b-4000:b])
+          PY
