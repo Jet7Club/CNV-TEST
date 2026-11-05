@@ -1,0 +1,29 @@
+name: Test day phrase visual overflow
+on:
+  push:
+    paths: ['.github/workflows/test-day-visual-overflow.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch();const p=await b.newPage({viewport:{width:1366,height:768}});
+            await p.goto('file://'+process.cwd()+'/index.html');await p.waitForTimeout(500);
+            const result=await p.evaluate(()=>{
+              const titles=[...document.querySelectorAll('#cnvIdealDayTimeline .slotTitle')];
+              return {count:titles.length,items:titles.map(e=>({text:e.textContent,scroll:e.scrollHeight,client:e.clientHeight,style:getComputedStyle(e).overflow,words:e.textContent.trim().split(/\s+/).length})),link:document.getElementById('cnvCharterPdfLink')?.outerHTML};
+            });
+            console.log(JSON.stringify(result));
+            if(result.count!==16||result.items.some(x=>x.scroll>x.client+2||x.words>9))throw new Error('Visual clipping or long phrase');
+            if(!result.link?.includes('target="_blank"'))throw new Error('PDF link not opening new tab');
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
