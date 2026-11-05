@@ -1,0 +1,68 @@
+name: Repair CNV email submission fallback
+on:
+  push:
+    paths: ['.github/workflows/repair-cnv-email-fallback.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          marker="console.error('CNV FormSubmit error',error);"
+          assert s.count(marker)==1
+          # Preserve all fields in a native HTML form if the AJAX request is rejected.
+          # FormSubmit supports regular POST as an alternative to its AJAX API.
+          old="""if(status)status.textContent=lang==='fr'?'Envoi impossible. Veuillez réessayer.':lang==='es'?'No se pudo enviar. Inténtelo de nuevo.':'Unable to send. Please try again.';"""
+          assert s.count(old)==1
+          new="""if(status){
+                  const detail=String(error?.message||'').slice(0,220);
+                  status.textContent=(lang==='fr'?'L’envoi direct a échoué. Utilisez le bouton sécurisé ci-dessous.':lang==='es'?'El envío directo falló. Utilice el botón seguro de abajo.':'Direct sending failed. Use the secure button below.')+' ('+detail+')';
+                  let fallback=document.getElementById('cnvMailFallback');
+                  if(!fallback){
+                    fallback=document.createElement('button');
+                    fallback.type='button';
+                    fallback.id='cnvMailFallback';
+                    fallback.className='btn btnGold';
+                    fallback.style.marginTop='12px';
+                    fallback.textContent=lang==='fr'?'Envoyer via le formulaire sécurisé':lang==='es'?'Enviar mediante formulario seguro':'Send via secure form';
+                    status.after(fallback);
+                  }
+                  fallback.onclick=()=>{
+                    const native=document.createElement('form');
+                    native.method='POST';
+                    native.action='https://formsubmit.co/jet7club@proton.me';
+                    native.target='_blank';
+                    native.style.display='none';
+                    const data={...payload,_next:'https://jet7club.github.io/CNV-TEST/#join'};
+                    Object.entries(data).forEach(([key,value])=>{
+                      const input=document.createElement('input');
+                      input.type='hidden';input.name=key;input.value=String(value);
+                      native.appendChild(input);
+                    });
+                    document.body.appendChild(native);
+                    native.submit();
+                    native.remove();
+                    status.textContent=lang==='fr'?'Formulaire sécurisé ouvert : confirmez l’envoi dans le nouvel onglet.':lang==='es'?'Formulario seguro abierto: confirme el envío en la nueva pestaña.':'Secure form opened: confirm sending in the new tab.';
+                  };
+                }"""
+          s=s.replace(old,new,1)
+          # Handle FormSubmit's success strings strictly; never report a false response as sent.
+          old="if(!response.ok||data.success===false||data.success==='false')throw new Error(data.message||'HTTP '+response.status);"
+          assert s.count(old)==1
+          new="if(!response.ok||data.success===false||data.success==='false'||data.success===0||data.success==='0')throw new Error(data.message||'HTTP '+response.status);"
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          print('PASS: error diagnostics and secure native FormSubmit fallback available')
+          PY
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Show FormSubmit errors and provide secure native POST fallback'
+          git pull --rebase origin main
+          git push
