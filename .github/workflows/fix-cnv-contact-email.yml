@@ -1,0 +1,80 @@
+name: Fix CNV contact email composition
+on:
+  push:
+    paths: ['.github/workflows/fix-cnv-contact-email.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          old='onsubmit="event.preventDefault();document.querySelector(\'.formStatus\').style.display=\'block\'"'
+          assert s.count(old)==1
+          s=s.replace(old,'id="cnvJoinContactForm"',1)
+          old='<div class="formStatus" data-i18n="i212">Thank you. Your message is ready to be sent to the CNV team.</div>'
+          assert s.count(old)==1
+          s=s.replace(old,'<div class="formStatus" id="cnvJoinFormStatus" role="status" aria-live="polite">Your email application will open with the complete request. Please press Send to deliver it to CNV.</div>',1)
+          script="""
+          <script id="cnv-contact-mailto">
+          (function(){
+            const recipient='jet7club@proton.me';
+            const form=document.getElementById('cnvJoinContactForm');
+            if(!form)return;
+            const status=document.getElementById('cnvJoinFormStatus');
+            const labels={fr:['Prénom','Nom','E-mail','Mobile / WhatsApp','Pays','LinkedIn / Instagram','Message'],en:['First name','Last name','Email','Mobile / WhatsApp','Country','LinkedIn / Instagram','Message'],es:['Nombre','Apellido','Correo electrónico','Móvil / WhatsApp','País','LinkedIn / Instagram','Mensaje']};
+            const lang=()=>document.getElementById('langSelect')?.value||document.documentElement.lang||'en';
+            const clean=s=>String(s||'').replace(/[\\r\\n]+/g,' ').trim();
+            form.addEventListener('submit',function(event){
+              event.preventDefault();
+              if(!form.reportValidity())return;
+              const language=lang().slice(0,2);
+              const fieldLabels=labels[language]||labels.en;
+              const fields=[...form.querySelectorAll('.field > input:not([type="checkbox"]),.field > textarea')];
+              const selected=document.getElementById('becomeSelect');
+              const goals=[...document.querySelectorAll('.joinQuestionnaire .goalGrid input[type="checkbox"]:checked')].map(el=>{
+                const group=el.closest('.goalGroup');
+                const category=clean(group?.querySelector('b')?.textContent);
+                const value=clean(el.closest('label')?.querySelector('span')?.textContent||el.closest('label')?.textContent);
+                return '- '+(category?category+' : ':'')+value;
+              });
+              const subject='CNV — '+clean(selected?.selectedOptions?.[0]?.textContent||'Join CNV')+' — '+clean(fields[0]?.value)+' '+clean(fields[1]?.value);
+              const body=[
+                'CHILL NATURAL VILLAGES — CONTACT',
+                'Language / Langue: '+language.toUpperCase(),
+                '',
+                'I want to become / Je souhaite devenir:',
+                clean(selected?.selectedOptions?.[0]?.textContent)||'—',
+                '',
+                'What are you looking for at CNV? / Vos objectifs:',
+                goals.length?goals.join('\\n'):'—',
+                '',
+                'Contact:',
+                ...fieldLabels.slice(0,6).map((label,i)=>label+': '+(fields[i]?.value?.trim()||'—')),
+                '',
+                fieldLabels[6]+':',
+                fields[6]?.value?.trim()||'—'
+              ].join('\\n');
+              const uri='mailto:'+recipient+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+              status.style.display='block';
+              status.textContent=language==='fr'?'Votre messagerie va s’ouvrir avec toutes vos réponses. Cliquez sur Envoyer pour transmettre votre demande.':language==='es'?'Se abrirá su correo con todas las respuestas. Pulse Enviar para remitir la solicitud.':'Your email application will open with all your answers. Press Send to deliver your request.';
+              window.location.href=uri;
+            });
+          })();
+          </script>
+          """
+          s=s.replace('</body>',script+'</body>',1)
+          p.write_text(s)
+          print('PASS: full selected profile, checked goals, contact details and message assembled for Proton address')
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Compose full CNV join request email to Proton address"
+          git pull --rebase origin main
+          git push
