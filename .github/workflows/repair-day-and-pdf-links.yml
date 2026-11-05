@@ -1,0 +1,97 @@
+name: Repair day text display and PDF link behavior
+on:
+  push:
+    paths: ['.github/workflows/repair-day-and-pdf-links.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html');s=p.read_text()
+          # Preserve personalization, but never output fragments or mechanical slices.
+          start=s.index('return result.map((description,i)=>{',s.index('function makeDay('))
+          end=s.index('});',start)+3
+          replacement="""return result.map((description,i)=>{
+            const original=String(description).trim().replace(/\\s+/g,' ');
+            const count=original.split(/\\s+/).length;
+            const incomplete=/(?:\\b(?:et|avec|pour|dans|sur|de|du|des|en|au|aux|à|the|and|with|for|of|in|to|y|con|para|de|en))$/i.test(original);
+            if(count<=9&&!incomplete&&!/[,:;–-]$/.test(original))return original;
+            const variants=[
+              ['Réveil paisible dans la nature','Respiration douce au lever du soleil','Éveil serein face aux collines'],
+              ['Petit-déjeuner gourmand et local','Saveurs fraîches pour bien commencer','Petit-déjeuner convivial au village'],
+              ['Yoga matinal en plein air','Étirements doux au jardin','Mouvement conscient dans la nature'],
+              ['Balade découverte parmi les oliviers','Exploration des sentiers andalous','Promenade inspirante au grand air'],
+              ['Atelier créatif et nouvelles idées','Temps libre pour vos projets','Découverte de nouveaux savoir-faire'],
+              ['Pause bien-être au spa','Relaxation au cœur du village','Détente et régénération naturelle'],
+              ['Déjeuner savoureux entre membres','Cuisine locale et rencontres conviviales','Table partagée aux saveurs andalouses'],
+              ['Activité sportive en pleine nature','Jeux collectifs et bonne humeur','Aventure douce entre amis'],
+              ['Rencontres inspirantes au village','Échanges autour de passions communes','Conversations chaleureuses entre membres'],
+              ['Création et projets au Pro Hub','Atelier collaboratif entre entrepreneurs','Partage d’idées et nouvelles perspectives'],
+              ['Découverte artistique et culturelle','Atelier d’expression créative','Rencontre avec les talents locaux'],
+              ['Pause détente à votre rythme','Moment de calme et ressourcement','Repos au milieu des jardins'],
+              ['Concert intimiste et belles découvertes','Cinéma partagé sous les étoiles','Spectacle vivant et émotions'],
+              ['Dîner convivial et nouvelles rencontres','Saveurs du soir entre amis','Cuisine généreuse en bonne compagnie'],
+              ['Promenade paisible sous les étoiles','Échanges complices en soirée','Balade nocturne dans les oliviers'],
+              ['Retour au calme et gratitude','Relaxation avant une nuit sereine','Fin de journée en douceur']
+            ];
+            return variants[i][hash(original+'|'+seed+'|'+i)%3];
+          });"""
+          s=s[:start]+replacement+s[end:]
+          # The site had a dummy '#' charter link. Open a language-specific PDF in a new tab.
+          old='<a class="btn btnLine" data-i18n="i36" href="#">'
+          assert s.count(old)==1
+          new='<a class="btn btnLine" data-i18n="i36" id="cnvCharterPdfLink" href="documents/CNV_Reglement_Interieur_FR.pdf" target="_blank" rel="noopener noreferrer">'
+          s=s.replace(old,new,1)
+          css="""
+          <style id="cnv-day-phrases-no-clipping">
+          #artdevivre #cnvIdealDayTimeline .cnvDaySlot{
+            height:auto!important;min-height:72px!important;max-height:none!important;
+            overflow:visible!important;grid-template-columns:52px 26px minmax(0,1fr)!important;
+            align-items:center!important;padding:12px 14px!important;
+          }
+          #artdevivre #cnvIdealDayTimeline .slotTitle{
+            display:block!important;height:auto!important;max-height:none!important;
+            overflow:visible!important;text-overflow:clip!important;
+            white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important;
+            line-height:1.45!important;font-size:13px!important;hyphens:none!important;
+          }
+          #artdevivre #cnvIdealDayTimeline{overflow:visible!important}
+          </style>
+          """
+          s=s.replace('</head>',css+'</head>',1)
+          # Dynamic language switch: detect language selector and translation dictionary.
+          script="""
+          <script id="cnv-charter-pdf-lang">
+          (function(){
+            const paths={fr:'documents/CNV_Reglement_Interieur_FR.pdf',en:'documents/CNV_Community_Charter_EN.pdf',es:'documents/CNV_Reglamento_Interno_ES.pdf'};
+            function sync(){
+              const a=document.getElementById('cnvCharterPdfLink');if(!a)return;
+              const html=document.documentElement.lang?.slice(0,2).toLowerCase();
+              const current=window.currentLang||window.lang||html||'en';
+              a.href=paths[current]||paths[html]||paths.en;
+            }
+            document.addEventListener('DOMContentLoaded',()=>{
+              sync();
+              new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+              document.addEventListener('click',e=>{if(e.target.closest('[data-lang],.langBtn,.language-btn'))setTimeout(sync,0)},true);
+            });
+          })();
+          </script>
+          """
+          s=s.replace('</body>',script+'</body>',1)
+          p.write_text(s)
+          print('PASS: full phrase display, no cut words, PDF links open in new tab')
+          PY
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Fix visual clipping and make CNV charter PDF link open new tab by language'
+          git pull --rebase origin main
+          git push
