@@ -1,0 +1,23 @@
+name: Audit CNV Web3Forms live
+on:
+  push:
+    paths: ['.github/workflows/audit-cnv-web3forms.yml']
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['cnv-web3forms','cnv-formsubmit-ajax','cnvMailFallback','formsubmit.co','api.web3forms.com','cnvJoinContactForm']:
+            print('LOCAL',term,s.count(term))
+          import urllib.request
+          u='https://jet7club.github.io/CNV-TEST/?audit=20261105'
+          try:
+            live=urllib.request.urlopen(u,timeout=20).read().decode()
+            for term in ['cnv-web3forms','cnv-formsubmit-ajax','cnvMailFallback','formsubmit.co','api.web3forms.com']:
+              print('LIVE',term,live.count(term))
+          except Exception as e: print('LIVE ERROR',str(e))
+          PY
