@@ -1,0 +1,30 @@
+name: Verify CNV contact mailto content
+on:
+  push:
+    paths: ['.github/workflows/verify-cnv-contact-email.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch();const page=await browser.newPage();
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('file://'+process.cwd()+'/index.html');
+            const result=await page.evaluate(()=>{
+              const form=document.getElementById('cnvJoinContactForm');
+              const code=document.getElementById('cnv-contact-mailto')?.textContent||'';
+              return {form:!!form,recipient:code.includes('jet7club@proton.me'),become:code.includes('becomeSelect'),goals:code.includes('goalGrid input[type="checkbox"]:checked'),fields:code.includes('fields[6]'),status:!!document.getElementById('cnvJoinFormStatus')};
+            });
+            console.log('RESULT',JSON.stringify(result),'ERRORS',JSON.stringify(errors));
+            if(errors.length||Object.values(result).some(x=>!x))throw new Error('Contact form test failed');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
