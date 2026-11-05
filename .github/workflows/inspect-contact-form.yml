@@ -1,0 +1,21 @@
+name: Inspect CNV contact form
+on:
+  push:
+    paths: ['.github/workflows/inspect-contact-form.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          for term in ['jet7club@proton.me','I want to become','What are you looking for','mailto:','formsubmit','submit','joinForm']:
+            matches=list(re.finditer(re.escape(term),s,re.I))
+            print('TERM',term,'COUNT',len(matches))
+            for m in matches[:5]:print('CONTEXT',repr(s[max(0,m.start()-350):m.start()+900]))
+          PY
