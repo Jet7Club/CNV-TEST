@@ -1,0 +1,80 @@
+name: CNV test production-style email submit
+on:
+  push:
+    paths: ['.github/workflows/cnv-real-email-submit.yml']
+permissions:
+  contents: write
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install FormSubmit AJAX integration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          # Normalize the old fake form submission and mailto handlers.
+          s=s.replace('onsubmit="event.preventDefault();document.querySelector(\'.formStatus\').style.display=\'block\'"','id="cnvJoinContactForm"')
+          if 'id="cnvJoinContactForm"' not in s:
+            s=s.replace('<form class="joinForm"','<form id="cnvJoinContactForm" class="joinForm"',1)
+          if 'id="cnvJoinFormStatus"' not in s:
+            s=s.replace('<div class="formStatus"','<div id="cnvJoinFormStatus" class="formStatus"',1)
+          if '<script id="cnv-contact-mailto">' in s:
+            a=s.index('<script id="cnv-contact-mailto">')
+            b=s.index('</script>',a)+len('</script>')
+            s=s[:a]+s[b:]
+          js="""<script id="cnv-formsubmit-ajax">
+          (function(){
+            'use strict';
+            const ENDPOINT='https://formsubmit.co/ajax/jet7club@proton.me';
+            function text(el){return (el?.textContent||'').replace(/\\s+/g,' ').trim()}
+            document.addEventListener('submit',async function(e){
+              const form=e.target;
+              if(form?.id!=='cnvJoinContactForm')return;
+              e.preventDefault();e.stopImmediatePropagation();
+              if(!form.reportValidity())return;
+              const button=form.querySelector('button[type="submit"]');
+              const status=document.getElementById('cnvJoinFormStatus')||form.querySelector('.formStatus');
+              const lang=(document.getElementById('langSelect')?.value||document.documentElement.lang||'en').slice(0,2).toLowerCase();
+              const fields=[...form.querySelectorAll('.field > input:not([type="checkbox"]),.field > textarea')];
+              const names=['First name','Last name','Email','Mobile / WhatsApp','Country','LinkedIn / Instagram','Message'];
+              const selected=document.getElementById('becomeSelect');
+              const choice=text(selected?.selectedOptions?.[0])||'Not specified';
+              const goals=[...document.querySelectorAll('.joinQuestionnaire .goalGrid input[type="checkbox"]:checked')].map(el=>{
+                const group=el.closest('.goalGroup');
+                const label=text(el.closest('label')?.querySelector('span'))||text(el.closest('label'));
+                const category=text(group?.querySelector('b'));
+                return (category?category+' — ':'')+label;
+              });
+              const payload={_subject:'CNV — '+choice+' — '+(fields[0]?.value||'')+' '+(fields[1]?.value||''),_template:'table',_captcha:'false',Language:lang,'I want to become':choice,'What are you looking for at CNV?':goals.length?goals.join(' | '):'No selection'};
+              names.forEach((name,i)=>payload[name]=fields[i]?.value?.trim()||'');
+              if(button)button.disabled=true;
+              if(status){status.style.display='block';status.textContent=lang==='fr'?'Envoi en cours…':lang==='es'?'Enviando…':'Sending…'}
+              try{
+                const response=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
+                const data=await response.json().catch(()=>({}));
+                if(!response.ok||data.success===false||data.success==='false')throw new Error(data.message||'HTTP '+response.status);
+                if(status)status.textContent=lang==='fr'?'Votre message a été transmis à CNV.':lang==='es'?'Su mensaje se ha enviado a CNV.':'Your message has been sent to CNV.';
+                form.reset();
+              }catch(error){
+                console.error('CNV FormSubmit error',error);
+                if(status)status.textContent=lang==='fr'?'Envoi impossible. Veuillez réessayer.':lang==='es'?'No se pudo enviar. Inténtelo de nuevo.':'Unable to send. Please try again.';
+              }finally{if(button)button.disabled=false}
+            },true);
+          })();
+          </script>"""
+          s=s.replace('</body>',js+'</body>',1)
+          p.write_text(s)
+          print('FORM',s.count('id="cnvJoinContactForm"'),'ENDPOINT',s.count('https://formsubmit.co/ajax/jet7club@proton.me'))
+          assert s.count('id="cnvJoinContactForm"')==1
+          assert s.count('https://formsubmit.co/ajax/jet7club@proton.me')==1
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Send complete Join CNV form via production FormSubmit AJAX endpoint'
+          git pull --rebase origin main
+          git push
