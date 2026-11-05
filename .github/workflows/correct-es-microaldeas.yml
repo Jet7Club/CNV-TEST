@@ -1,0 +1,34 @@
+name: Correct Spanish microaldeas
+on:
+  push:
+    paths: ['.github/workflows/correct-es-microaldeas.yml']
+permissions:
+  contents: write
+jobs:
+  correct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Correct Spanish text
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          phrase='Unos pocos clics para crear tu'
+          print('found',s.count(phrase))
+          assert phrase in s
+          start=s.index(phrase)
+          end=s.find('"',start)
+          assert 0<end-start<400
+          s=s[:start]+'Microaldeas'+s[end:]
+          p.write_text(s)
+          print('updated')
+          PY
+      - name: Save
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add index.html
+          git commit -m 'Correct Spanish microaldeas label'
+          git push
