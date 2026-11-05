@@ -1,0 +1,58 @@
+name: Fix complete nine-word day phrases
+on:
+  push:
+    paths: ['.github/workflows/fix-complete-day-phrases.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace broken word slicing with complete sentence alternatives
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          start=s.index('  return result.map((description,i)=>{',s.index('function makeDay('))
+          end=s.index('\n }\n',start)+3
+          replacement="""  // Never cut a phrase at an arbitrary word boundary.
+  // For overlong source phrases, choose a complete editorial alternative.
+  const conciseAlternatives=[
+    ['Réveil paisible dans la nature','Respiration douce au lever du soleil','Éveil serein face aux collines'],
+    ['Petit-déjeuner gourmand et local','Saveurs fraîches pour bien commencer','Petit-déjeuner convivial au village'],
+    ['Yoga matinal en plein air','Étirements doux au jardin','Mouvement conscient dans la nature'],
+    ['Balade découverte parmi les oliviers','Exploration des sentiers andalous','Promenade inspirante au grand air'],
+    ['Atelier créatif et nouvelles idées','Temps libre pour vos projets','Découverte de nouveaux savoir-faire'],
+    ['Pause bien-être au spa','Relaxation au cœur du village','Détente et régénération naturelle'],
+    ['Déjeuner savoureux entre membres','Cuisine locale et rencontres conviviales','Table partagée aux saveurs andalouses'],
+    ['Activité sportive en pleine nature','Jeux collectifs et bonne humeur','Aventure douce entre amis'],
+    ['Rencontres inspirantes au village','Échanges autour de passions communes','Conversations chaleureuses entre membres'],
+    ['Création et projets au Pro Hub','Atelier collaboratif entre entrepreneurs','Partage d’idées et nouvelles perspectives'],
+    ['Découverte artistique et culturelle','Atelier d’expression créative','Rencontre avec les talents locaux'],
+    ['Pause détente à votre rythme','Moment de calme et ressourcement','Repos au milieu des jardins'],
+    ['Concert intimiste et belles découvertes','Cinéma partagé sous les étoiles','Spectacle vivant et émotions'],
+    ['Dîner convivial et nouvelles rencontres','Saveurs du soir entre amis','Cuisine généreuse en bonne compagnie'],
+    ['Promenade paisible sous les étoiles','Échanges complices en soirée','Balade nocturne dans les oliviers'],
+    ['Retour au calme et gratitude','Relaxation avant une nuit sereine','Fin de journée en douceur']
+  ];
+  return result.map((description,i)=>{
+    const original=String(description).trim().replace(/\\s+/g,' ');
+    if(original.split(/\\s+/).length<=9&&!/[,:;–-]$/.test(original))return original;
+    const options=conciseAlternatives[i]||conciseAlternatives[0];
+    return options[hash(seed+'|concise|'+i)%options.length];
+  });"""
+          s=s[:start]+replacement+s[end:]
+          assert 'words.slice(0,9)' not in s
+          assert s.count('const conciseAlternatives=')==1
+          p.write_text(s)
+          print('PASS: complete phrases, max nine words, no word chopping')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Use complete editorial nine-word phrases instead of cutting words"
+          git pull --rebase origin main
+          git push
