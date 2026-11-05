@@ -1999,52 +1999,46 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
 })();
 </script>
 
-<script id="cnv-contact-mailto">
+
+<script id="cnv-formsubmit-ajax">
 (function(){
-  const recipient='jet7club@proton.me';
-  const form=document.getElementById('cnvJoinContactForm');
-  if(!form)return;
-  const status=document.getElementById('cnvJoinFormStatus');
-  const labels={fr:['Prénom','Nom','E-mail','Mobile / WhatsApp','Pays','LinkedIn / Instagram','Message'],en:['First name','Last name','Email','Mobile / WhatsApp','Country','LinkedIn / Instagram','Message'],es:['Nombre','Apellido','Correo electrónico','Móvil / WhatsApp','País','LinkedIn / Instagram','Mensaje']};
-  const lang=()=>document.getElementById('langSelect')?.value||document.documentElement.lang||'en';
-  const clean=s=>String(s||'').replace(/[\r\n]+/g,' ').trim();
-  form.addEventListener('submit',function(event){
-    event.preventDefault();
+  'use strict';
+  const ENDPOINT='https://formsubmit.co/ajax/jet7club@proton.me';
+  function text(el){return (el?.textContent||'').replace(/\s+/g,' ').trim()}
+  document.addEventListener('submit',async function(e){
+    const form=e.target;
+    if(form?.id!=='cnvJoinContactForm')return;
+    e.preventDefault();e.stopImmediatePropagation();
     if(!form.reportValidity())return;
-    const language=lang().slice(0,2);
-    const fieldLabels=labels[language]||labels.en;
+    const button=form.querySelector('button[type="submit"]');
+    const status=document.getElementById('cnvJoinFormStatus')||form.querySelector('.formStatus');
+    const lang=(document.getElementById('langSelect')?.value||document.documentElement.lang||'en').slice(0,2).toLowerCase();
     const fields=[...form.querySelectorAll('.field > input:not([type="checkbox"]),.field > textarea')];
+    const names=['First name','Last name','Email','Mobile / WhatsApp','Country','LinkedIn / Instagram','Message'];
     const selected=document.getElementById('becomeSelect');
+    const choice=text(selected?.selectedOptions?.[0])||'Not specified';
     const goals=[...document.querySelectorAll('.joinQuestionnaire .goalGrid input[type="checkbox"]:checked')].map(el=>{
       const group=el.closest('.goalGroup');
-      const category=clean(group?.querySelector('b')?.textContent);
-      const value=clean(el.closest('label')?.querySelector('span')?.textContent||el.closest('label')?.textContent);
-      return '- '+(category?category+' : ':'')+value;
+      const label=text(el.closest('label')?.querySelector('span'))||text(el.closest('label'));
+      const category=text(group?.querySelector('b'));
+      return (category?category+' — ':'')+label;
     });
-    const subject='CNV — '+clean(selected?.selectedOptions?.[0]?.textContent||'Join CNV')+' — '+clean(fields[0]?.value)+' '+clean(fields[1]?.value);
-    const body=[
-      'CHILL NATURAL VILLAGES — CONTACT',
-      'Language / Langue: '+language.toUpperCase(),
-      '',
-      'I want to become / Je souhaite devenir:',
-      clean(selected?.selectedOptions?.[0]?.textContent)||'—',
-      '',
-      'What are you looking for at CNV? / Vos objectifs:',
-      goals.length?goals.join('\n'):'—',
-      '',
-      'Contact:',
-      ...fieldLabels.slice(0,6).map((label,i)=>label+': '+(fields[i]?.value?.trim()||'—')),
-      '',
-      fieldLabels[6]+':',
-      fields[6]?.value?.trim()||'—'
-    ].join('\n');
-    const uri='mailto:'+recipient+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-    status.style.display='block';
-    status.textContent=language==='fr'?'Votre messagerie va s’ouvrir avec toutes vos réponses. Cliquez sur Envoyer pour transmettre votre demande.':language==='es'?'Se abrirá su correo con todas las respuestas. Pulse Enviar para remitir la solicitud.':'Your email application will open with all your answers. Press Send to deliver your request.';
-    window.location.href=uri;
-  });
+    const payload={_subject:'CNV — '+choice+' — '+(fields[0]?.value||'')+' '+(fields[1]?.value||''),_template:'table',_captcha:'false',Language:lang,'I want to become':choice,'What are you looking for at CNV?':goals.length?goals.join(' | '):'No selection'};
+    names.forEach((name,i)=>payload[name]=fields[i]?.value?.trim()||'');
+    if(button)button.disabled=true;
+    if(status){status.style.display='block';status.textContent=lang==='fr'?'Envoi en cours…':lang==='es'?'Enviando…':'Sending…'}
+    try{
+      const response=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||data.success===false||data.success==='false')throw new Error(data.message||'HTTP '+response.status);
+      if(status)status.textContent=lang==='fr'?'Votre message a été transmis à CNV.':lang==='es'?'Su mensaje se ha enviado a CNV.':'Your message has been sent to CNV.';
+      form.reset();
+    }catch(error){
+      console.error('CNV FormSubmit error',error);
+      if(status)status.textContent=lang==='fr'?'Envoi impossible. Veuillez réessayer.':lang==='es'?'No se pudo enviar. Inténtelo de nuevo.':'Unable to send. Please try again.';
+    }finally{if(button)button.disabled=false}
+  },true);
 })();
-</script>
-</body></html>
+</script></body></html>
 <!-- V4.3: Join CNV moved to end; large photography added to every major module. -->
 <!-- V4.5: module illustrations removed; clean premium editorial layout retained. -->
