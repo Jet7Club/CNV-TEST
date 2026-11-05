@@ -1,0 +1,37 @@
+name: Verify FormSubmit payload without emailing
+on:
+  push:
+    paths: ['.github/workflows/verify-formsubmit-payload.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch();const page=await browser.newPage();
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('file://'+process.cwd()+'/index.html');
+            const result=await page.evaluate(async()=>{
+              const form=document.getElementById('cnvJoinContactForm');
+              const fields=[...form.querySelectorAll('.field > input:not([type="checkbox"]),.field > textarea')];
+              const values=['Alice','Martin','alice@example.com','+33600000000','France','linkedin.com/in/alice','Je souhaite participer au projet'];
+              fields.forEach((f,i)=>f.value=values[i]||'');
+              const select=document.getElementById('becomeSelect');if(select.options.length>1)select.selectedIndex=1;
+              const goals=[...document.querySelectorAll('.joinQuestionnaire .goalGrid input[type="checkbox"]')];goals.slice(0,2).forEach(x=>x.checked=true);
+              const consent=form.querySelector('input[type="checkbox"][required]');if(consent)consent.checked=true;
+              let captured=null;window.fetch=async(url,opts)=>{captured={url,payload:JSON.parse(opts.body)};return {ok:true,json:async()=>({success:'true'})}};
+              form.requestSubmit();await new Promise(r=>setTimeout(r,100));
+              return {captured,goalCount:goals.length,fieldCount:fields.length,status:document.getElementById('cnvJoinFormStatus')?.textContent};
+            });
+            console.log('PAYLOAD',JSON.stringify(result),'ERRORS',JSON.stringify(errors));
+            if(errors.length||!result.captured?.url.includes('formsubmit.co/ajax/jet7club@proton.me')||!result.captured.payload['I want to become']||!result.captured.payload['What are you looking for at CNV?']||!result.captured.payload.Message||!result.status.includes('sent'))throw Error('Incomplete form submission');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
