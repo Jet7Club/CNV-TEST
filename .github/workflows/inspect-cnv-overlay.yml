@@ -1,0 +1,21 @@
+name: Inspect CNV overlay script
+on:
+  push:
+    paths: ['.github/workflows/inspect-cnv-overlay.yml']
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for t in ['Join CNV</a>','Destinations</a>','menuPanel','cnvMenu','mobileMenu','menuItems','navLinks','menuOverlay','querySelectorAll("nav a")']:
+            print('TERM',t,s.count(t))
+            i=0
+            for _ in range(min(s.count(t),5)):
+              i=s.find(t,i)
+              print('SNIP',repr(s[max(0,i-360):i+420]))
+              i+=len(t)
+          PY
