@@ -1,0 +1,21 @@
+name: Inspect hamburger menu
+on:
+  push:
+    paths: ['.github/workflows/inspect-hamburger-order.yml']
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['hamburger','navMenu','menuToggle','cloneNode','joincnv','destinations']:
+            print('TERM',term,s.count(term))
+            pos=0
+            for n in range(min(s.count(term),7)):
+              pos=s.find(term,pos)
+              print('SNIP',repr(s[max(0,pos-190):pos+260]))
+              pos+=len(term)
+          PY
