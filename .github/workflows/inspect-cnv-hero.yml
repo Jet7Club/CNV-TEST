@@ -1,0 +1,20 @@
+name: Inspect CNV hero background
+on:
+  push:
+    paths: ['.github/workflows/inspect-cnv-hero.yml']
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          for term in ['hero{','hero::before','background-image','heroContent','heroBg','background:url','background: url']:
+            print('TERM',term,s.count(term))
+            for m in list(re.finditer(re.escape(term),s))[:8]:
+              print('SNIP',repr(s[max(0,m.start()-200):m.start()+420]))
+          print('IMAGE',Path('cnv-hero.jpg').stat().st_size)
+          PY
