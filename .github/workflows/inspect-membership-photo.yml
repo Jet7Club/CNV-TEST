@@ -1,0 +1,21 @@
+name: Inspect CNV membership photo
+on:
+  push:
+    paths: ['.github/workflows/inspect-membership-photo.yml']
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for t in ['id="membership"','id="members"','id="memberships"','id="membersSection"','Members, owners','Membership','class="editorialVisual"']:
+            print('TERM',t,s.count(t))
+            i=0
+            for _ in range(min(s.count(t),12)):
+              i=s.find(t,i)
+              print('SNIP',repr(s[max(0,i-280):i+520]))
+              i+=len(t)
+          PY
