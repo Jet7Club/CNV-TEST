@@ -1,0 +1,19 @@
+name: Inspect CNV section visuals
+on:
+  push:
+    paths: ['.github/workflows/inspect-section-visuals.yml']
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          for term in ['id="vision"','id="experience"','id="village"','id="artdevivre"','id="tech"','id="members"','id="joincnv"','class="editorialVisual"','class="visual"']:
+            print('TERM',term,s.count(term))
+            for m in list(re.finditer(re.escape(term),s))[:3]:
+              print('SNIP',repr(s[m.start():m.start()+1600]))
+          PY
