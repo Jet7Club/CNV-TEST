@@ -1,0 +1,47 @@
+name: Fix visible CNV dropdown order
+on:
+  push:
+    paths: ['.github/workflows/fix-visible-menu-order.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          js="""<script id="cnv-enforce-menu-order">
+          (function(){
+            function fix(){
+              document.querySelectorAll('#cnvMainMenu,header nav').forEach(function(menu){
+                var join=menu.querySelector('a[href="#joincnv"]');
+                var destinations=menu.querySelector('a[href="#destinations"]');
+                if(join&&destinations&&join.parentElement===destinations.parentElement){
+                  destinations.after(join);
+                }
+              });
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix);
+            else fix();
+            window.addEventListener('load',fix);
+            var attempts=0;
+            var timer=setInterval(function(){fix();if(++attempts>=20)clearInterval(timer)},250);
+          })();
+          </script>"""
+          assert 'id="cnv-enforce-menu-order"' not in s
+          assert '</body>' in s
+          s=s.replace('</body>',js+'</body>',1)
+          p.write_text(s)
+          print('PASS: visible dropdown reorders Destinations before Join CNV')
+          PY
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add index.html
+          git commit -m 'Fix rendered hamburger menu order'
+          git pull --rebase origin main
+          git push
