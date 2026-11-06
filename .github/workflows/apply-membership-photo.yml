@@ -1,0 +1,33 @@
+name: Apply CNV Membership photo
+on:
+  push:
+    paths: ['.github/workflows/apply-membership-photo.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          assert Path('Membership.jpg').is_file()
+          i=s.index('id="membership"')
+          visual=s.index('<div class="editorialVisual"><img',i)
+          assert visual-i<150
+          a=s.index('src="',visual)+5
+          b=s.index('"',a)
+          s=s[:a]+'Membership.jpg'+s[b:]
+          p.write_text(s)
+          print('PASS membership photo set')
+          PY
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add index.html
+          git commit -m 'Use uploaded Membership photo'
+          git pull --rebase origin main
+          git push
