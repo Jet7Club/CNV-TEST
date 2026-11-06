@@ -1,0 +1,23 @@
+name: Reorder CNV navigation
+on:
+  push:
+    paths: ['.github/workflows/reorder-cnv-navigation.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for t in ['Join CNV','Destinations','Rejoindre CNV']:
+            print('TERM',t,s.count(t))
+            pos=0
+            for _ in range(min(s.count(t),5)):
+              pos=s.find(t,pos)
+              print('CONTEXT',repr(s[max(0,pos-180):pos+180]))
+              pos+=len(t)
+          PY
