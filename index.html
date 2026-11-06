@@ -2042,6 +2042,23 @@ populate();render();window.CNV_DAY_ENGINE={keys,makeDay,render,applyScenario,sce
     }finally{if(button)button.disabled=false}
   },true);
 })();
+</script><script id="cnv-enforce-menu-order">
+(function(){
+  function fix(){
+    document.querySelectorAll('#cnvMainMenu,header nav').forEach(function(menu){
+      var join=menu.querySelector('a[href="#joincnv"]');
+      var destinations=menu.querySelector('a[href="#destinations"]');
+      if(join&&destinations&&join.parentElement===destinations.parentElement){
+        destinations.after(join);
+      }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix);
+  else fix();
+  window.addEventListener('load',fix);
+  var attempts=0;
+  var timer=setInterval(function(){fix();if(++attempts>=20)clearInterval(timer)},250);
+})();
 </script></body></html>
 <!-- V4.3: Join CNV moved to end; large photography added to every major module. -->
 <!-- V4.5: module illustrations removed; clean premium editorial layout retained. -->
